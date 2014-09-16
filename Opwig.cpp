@@ -9,6 +9,9 @@
 // Declares llvm::cl::extrahelp.
 #include "llvm/Support/CommandLine.h"
 
+#include <unordered_map>
+#include <iostream>
+
 using namespace clang;
 using namespace clang::ast_matchers;
 using namespace clang::tooling;
@@ -28,29 +31,36 @@ static cl::extrahelp MoreHelp("\nMore help text...");
 
 //
 
-DeclarationMatcher NamespaceMatcher = namespaceDecl().bind("namespaceMatch");
-DeclarationMatcher RecordMatcher = recordDecl(isDefinition()).bind("recordMatch");
-DeclarationMatcher FunctionMatcher = functionDecl().bind("functionMatch");
+struct OPClass {
+    std::string name;
 
-class NamespacePrinter : public MatchFinder::MatchCallback {
-public:
-    virtual void run(const MatchFinder::MatchResult &Result) {
-        auto NS = Result.Nodes.getDeclAs<NamespaceDecl>("namespaceMatch");
-        if (NS && NS->isOriginalNamespace() && !NS->isAnonymousNamespace()) {
-            llvm::outs() << "Found namespace: " << NS->getName() << "\n";
-        }
+    friend std::ostream& operator<< (std::ostream& os, const OPClass& self) {
+        os << "\"name\": \"" << self.name << "\"\n";
+        return os;
     }
 };
+struct OPFunction {
+    std::string name;
+
+    friend std::ostream& operator<< (std::ostream& os, const OPFunction& self) {
+        os << "\"name\": \"" << self.name << "\"\n";
+        return os;
+    }
+};
+
+std::unordered_map<std::string, OPClass> opclasses;
+std::unordered_map<std::string, OPFunction> opfunctions;
+
+DeclarationMatcher RecordMatcher = recordDecl(isDefinition()).bind("recordMatch");
+DeclarationMatcher FunctionMatcher = functionDecl().bind("functionMatch");
 
 class RecordPrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<CXXRecordDecl>("recordMatch");
         if (Item) {
-            llvm::outs() << "Found class/struct/union: " << Item->getName() << "\n";
-            for (const auto& method : Item->methods()) {
-                llvm::outs() << "\tMethod: " << method->getName() << "\n";
-            }
+            auto& cl = opclasses[Item->getQualifiedNameAsString()];
+            cl.name = Item->getNameAsString();
         }
     }
 };
@@ -59,8 +69,9 @@ class FunctionPrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<FunctionDecl>("functionMatch");
-        if (Item && !Item->isCXXInstanceMember()) {
-            llvm::outs() << "Found function: " << Item->getName() << "\n";
+        if (Item) {
+            auto& fn = opfunctions[Item->getQualifiedNameAsString()];
+            fn.name = Item->getNameAsString();
         }
     }
 };
@@ -73,13 +84,36 @@ int main(int argc, const char **argv) {
   ClangTool Tool(OptionsParser.getCompilations(),
                  OptionsParser.getSourcePathList());
 
-  NamespacePrinter NSPrinter;
   RecordPrinter RePrinter;
   FunctionPrinter FunPrinter;
   MatchFinder Finder;
-  Finder.addMatcher(NamespaceMatcher, &NSPrinter);
   Finder.addMatcher(RecordMatcher, &RePrinter);
   Finder.addMatcher(FunctionMatcher, &FunPrinter);
 
-  return Tool.run(newFrontendActionFactory(&Finder).get());
+  int result = Tool.run(newFrontendActionFactory(&Finder).get());
+  if (result == 0) {
+      bool has_prev = false;
+      std::cout << "{\n\"classes\": {";
+      for (const auto& cl : opclasses) {
+          if (has_prev)
+              std::cout << ",";
+          std::cout << "\n\"" << cl.first << "\": {\n";
+          std::cout << cl.second;
+          std::cout << "}";
+          has_prev = true;
+      }
+
+      has_prev = false;
+      std::cout << "},\n\"functions\": {";
+      for (const auto& fn : opfunctions) {
+          if (has_prev)
+              std::cout << ",";
+          std::cout << "\n\"" << fn.first << "\": {\n";
+          std::cout << fn.second;
+          std::cout << "}";
+          has_prev = true;
+      }
+      std::cout << "}\n}\n";
+  }
+  return result;
 }
