@@ -5,12 +5,14 @@
 #include "clang/ASTMatchers/ASTMatchers.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/AST/ASTContext.h"
+#include "clang/AST/Type.h"
 #include "clang/Basic/SourceLocation.h"
 // Declares llvm::cl::extrahelp.
 #include "llvm/Support/CommandLine.h"
 
 #include <unordered_map>
 #include <iostream>
+#include <sstream>
 
 using namespace clang;
 using namespace clang::ast_matchers;
@@ -31,25 +33,39 @@ static cl::extrahelp MoreHelp("\nMore help text...");
 
 //
 
-struct OPClass {
-    std::string name;
+std::string EscapeStringForJson(const std::string& s) {
+    return "\"" + s + "\"";
+}
 
-    friend std::ostream& operator<< (std::ostream& os, const OPClass& self) {
-        os << "\"name\": \"" << self.name << "\"\n";
-        return os;
+static std::string DumpToJson(const CXXRecordDecl* cl) {
+    std::stringstream ss;
+    ss << "\n{\n";
+    ss << "\"qualified_name\": " << EscapeStringForJson(cl->getQualifiedNameAsString()) << "\n,";
+    ss << "\"name\": " << EscapeStringForJson(cl->getNameAsString()) << "\n";
+    ss << "}";
+    return ss.str();
+}
+
+static std::string DumpToJson(const FunctionDecl* func) {
+    std::stringstream ss;
+    ss << "\n{\n";
+    ss << "\"qualified_name\": " << EscapeStringForJson(func->getQualifiedNameAsString()) << "\n,";
+    ss << "\"name\": " << EscapeStringForJson(func->getNameAsString()) << ",\n";
+    ss << "\"params\": [";
+    bool step = false;
+    for (const auto& param : func->params()) {
+        if (step) ss << ",";
+        ss << EscapeStringForJson(param->getType().getAsString());
+        step = true;
     }
-};
-struct OPFunction {
-    std::string name;
+    ss << "],\n";
+    ss << "\"return\": " << EscapeStringForJson(func->getReturnType().getAsString()) << "\n";
+    ss << "}";
+    return ss.str();
+}
 
-    friend std::ostream& operator<< (std::ostream& os, const OPFunction& self) {
-        os << "\"name\": \"" << self.name << "\"\n";
-        return os;
-    }
-};
-
-std::unordered_map<std::string, OPClass> opclasses;
-std::unordered_map<std::string, OPFunction> opfunctions;
+std::vector<std::string> opclasses;
+std::vector<std::string> opfunctions;
 
 DeclarationMatcher RecordMatcher = recordDecl(isDefinition()).bind("recordMatch");
 DeclarationMatcher FunctionMatcher = functionDecl().bind("functionMatch");
@@ -59,8 +75,7 @@ public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<CXXRecordDecl>("recordMatch");
         if (Item) {
-            auto& cl = opclasses[Item->getQualifiedNameAsString()];
-            cl.name = Item->getNameAsString();
+            opclasses.push_back(DumpToJson(Item));
         }
     }
 };
@@ -70,14 +85,10 @@ public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<FunctionDecl>("functionMatch");
         if (Item) {
-            auto& fn = opfunctions[Item->getQualifiedNameAsString()];
-            fn.name = Item->getNameAsString();
+            opfunctions.push_back(DumpToJson(Item));
         }
     }
 };
-
-
-//
 
 int main(int argc, const char **argv) {
   CommonOptionsParser OptionsParser(argc, argv, MyToolCategory);
@@ -92,28 +103,19 @@ int main(int argc, const char **argv) {
 
   int result = Tool.run(newFrontendActionFactory(&Finder).get());
   if (result == 0) {
-      bool has_prev = false;
-      std::cout << "{\n\"classes\": {";
-      for (const auto& cl : opclasses) {
-          if (has_prev)
+      std::cout << "{\n\"classes\": [";
+      for (size_t i = 0; i < opclasses.size(); ++i) {
+          if (i > 0)
               std::cout << ",";
-          std::cout << "\n\"" << cl.first << "\": {\n";
-          std::cout << cl.second;
-          std::cout << "}";
-          has_prev = true;
+          std::cout << opclasses[i];
       }
-
-      has_prev = false;
-      std::cout << "},\n\"functions\": {";
-      for (const auto& fn : opfunctions) {
-          if (has_prev)
+      std::cout << "\n],\n\"functions\": [";
+      for (size_t i = 0; i < opfunctions.size(); ++i) {
+          if (i > 0)
               std::cout << ",";
-          std::cout << "\n\"" << fn.first << "\": {\n";
-          std::cout << fn.second;
-          std::cout << "}";
-          has_prev = true;
+          std::cout << opfunctions[i];
       }
-      std::cout << "}\n}\n";
+      std::cout << "\n]\n}\n";
   }
   return result;
 }
