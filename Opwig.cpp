@@ -74,10 +74,6 @@ std::vector<std::string> opnamespaces;
 std::vector<std::string> opclasses;
 std::vector<std::string> opfunctions;
 
-DeclarationMatcher RecordMatcher = recordDecl(isDefinition()).bind("recordMatch");
-DeclarationMatcher FunctionMatcher = functionDecl().bind("functionMatch");
-DeclarationMatcher NamespaceMatcher = namespaceDecl().bind("namespaceMatch");
-
 class RecordPrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
@@ -118,9 +114,9 @@ int main(int argc, const char **argv) {
   FunctionPrinter FunPrinter;
   NamespacePrinter NsPrinter;
   MatchFinder Finder;
-  Finder.addMatcher(RecordMatcher, &RePrinter);
-  Finder.addMatcher(FunctionMatcher, &FunPrinter);
-  Finder.addMatcher(NamespaceMatcher, &NsPrinter);
+  Finder.addMatcher(recordDecl(isDefinition()).bind("recordMatch"), &RePrinter);
+  Finder.addMatcher(functionDecl().bind("functionMatch"), &FunPrinter);
+  Finder.addMatcher(namespaceDecl().bind("namespaceMatch"), &NsPrinter);
 
   int result = Tool.run(newFrontendActionFactory(&Finder).get());
   if (result == 0) {
