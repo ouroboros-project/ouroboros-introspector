@@ -33,15 +33,21 @@ static cl::extrahelp MoreHelp("\nMore help text...");
 
 //
 
-std::string EscapeStringForJson(const std::string& s) {
+std::string JsonEscape(const std::string& s) {
     return "\"" + s + "\"";
 }
+
+std::string JsonEscape(bool b) {
+    return b ? "true" : "false";
+}
+
+//
 
 static std::string DumpToJson(const CXXRecordDecl* cl) {
     std::stringstream ss;
     ss << "\n{\n";
-    ss << "\"qualified_name\": " << EscapeStringForJson(cl->getQualifiedNameAsString()) << "\n,";
-    ss << "\"name\": " << EscapeStringForJson(cl->getNameAsString()) << "\n";
+    ss << "\"qualified_name\": " << JsonEscape(cl->getQualifiedNameAsString()) << ",\n";
+    ss << "\"name\": " << JsonEscape(cl->getNameAsString()) << "\n";
     ss << "}";
     return ss.str();
 }
@@ -49,17 +55,17 @@ static std::string DumpToJson(const CXXRecordDecl* cl) {
 static std::string DumpToJson(const FunctionDecl* func) {
     std::stringstream ss;
     ss << "\n{\n";
-    ss << "\"qualified_name\": " << EscapeStringForJson(func->getQualifiedNameAsString()) << "\n,";
-    ss << "\"name\": " << EscapeStringForJson(func->getNameAsString()) << ",\n";
+    ss << "\"qualified_name\": " << JsonEscape(func->getQualifiedNameAsString()) << ",\n";
+    ss << "\"name\": " << JsonEscape(func->getNameAsString()) << ",\n";
     ss << "\"params\": [";
     bool step = false;
     for (const auto& param : func->params()) {
         if (step) ss << ",";
-        ss << EscapeStringForJson(param->getType().getAsString());
+        ss << JsonEscape(param->getType().getAsString());
         step = true;
     }
     ss << "],\n";
-    ss << "\"return\": " << EscapeStringForJson(func->getReturnType().getAsString()) << "\n";
+    ss << "\"return\": " << JsonEscape(func->getReturnType().getAsString()) << "\n";
     ss << "}";
     return ss.str();
 }
@@ -85,6 +91,7 @@ public:
 class FunctionPrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
+        Result.Context->ExternalSource;
         auto Item = Result.Nodes.getDeclAs<FunctionDecl>("functionMatch");
         if (Item) {
             opfunctions.push_back(DumpToJson(Item));
@@ -121,7 +128,7 @@ int main(int argc, const char **argv) {
       for (size_t i = 0; i < opnamespaces.size(); ++i) {
           if (i > 0)
               std::cout << ",";
-          std::cout << EscapeStringForJson(opnamespaces[i]);
+          std::cout << JsonEscape(opnamespaces[i]);
       }
 
       std::cout << "\n],\n\"classes\": [";
