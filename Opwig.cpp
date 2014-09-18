@@ -95,11 +95,25 @@ static std::string DumpToJson(const CXXRecordDecl* cl) {
     ss << ",\n\"name\": " << JsonEscape(cl->getNameAsString());
 
     ss << ",\n\"methods\": [";
-    bool step = false;
-    for (const auto& method : cl->methods()) {
-        if (step) ss << ",";
-        ss << DumpToJson(method);
-        step = true;
+    {
+        bool step = false;
+        for (const auto& method : cl->methods()) {
+            if (step) ss << ",";
+            ss << DumpToJson(method);
+            step = true;
+        }
+    }
+    ss << "]";
+
+    ss << ",\n\"base_class\": [";
+    {
+        bool step = false;
+        for (const auto& base: cl->bases()) {
+            if (step) ss << ",";
+            ss << "{ \"access\": " << JsonEscape(ToString(base.getAccessSpecifier()));
+            ss << ", \"name\": " << JsonEscape(base.getType()->getAsCXXRecordDecl()->getQualifiedNameAsString()) << " }";
+            step = true;
+        }
     }
     ss << "]";
 
