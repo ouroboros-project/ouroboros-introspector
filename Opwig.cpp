@@ -108,7 +108,9 @@ class NamespacePrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<NamespaceDecl>("namespaceMatch");
-        if (Item && Item->isCanonicalDecl() && !Item->isAnonymousNamespace()) {
+        if (Item && !Item->isAnonymousNamespace() 
+            && std::find(opnamespaces.begin(), opnamespaces.end(), Item->getQualifiedNameAsString()) == opnamespaces.end()) {
+
             auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
             if (input_files.find(entry) != input_files.end()) {
                 opnamespaces.push_back(Item->getQualifiedNameAsString());
