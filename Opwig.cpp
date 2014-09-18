@@ -42,31 +42,67 @@ std::string JsonEscape(bool b) {
     return b ? "true" : "false";
 }
 
-//
-
-static std::string DumpToJson(const CXXRecordDecl* cl) {
-    std::stringstream ss;
-    ss << "\n{\n";
-    ss << "\"qualified_name\": " << JsonEscape(cl->getQualifiedNameAsString()) << ",\n";
-    ss << "\"name\": " << JsonEscape(cl->getNameAsString()) << "\n";
-    ss << "}";
-    return ss.str();
+std::string ToString(AccessSpecifier access) {
+    switch (access) {
+        case AccessSpecifier::AS_private: return "private";
+        case AccessSpecifier::AS_protected: return "protected";
+        case AccessSpecifier::AS_public: return "public";
+        default: return "";
+    }
 }
 
-static std::string DumpToJson(const FunctionDecl* func) {
+//
+static std::string DumpToJsonCommonFunc(const FunctionDecl* func) {
     std::stringstream ss;
-    ss << "\n{\n";
-    ss << "\"qualified_name\": " << JsonEscape(func->getQualifiedNameAsString()) << ",\n";
-    ss << "\"name\": " << JsonEscape(func->getNameAsString()) << ",\n";
-    ss << "\"params\": [";
+    ss << "\n{";
+    ss << " \n\"qualified_name\": " << JsonEscape(func->getQualifiedNameAsString());
+    ss << ",\n\"name\": " << JsonEscape(func->getNameAsString());
+    
+    //
+    ss << ",\n\"params\": [";
     bool step = false;
     for (const auto& param : func->params()) {
         if (step) ss << ",";
         ss << JsonEscape(param->getType().getAsString());
         step = true;
     }
-    ss << "],\n";
-    ss << "\"return\": " << JsonEscape(func->getReturnType().getAsString()) << "\n";
+    ss << "]";
+    //
+
+    ss << ",\n\"return\": " << JsonEscape(func->getReturnType().getAsString());
+    ss << ",\n\"deleted\": " << JsonEscape(func->isDeleted());
+    return ss.str();
+}
+static std::string DumpToJson(const FunctionDecl* func) {
+    return DumpToJsonCommonFunc(func) + "}";
+}
+
+static std::string DumpToJson(const CXXMethodDecl* method) {
+    std::stringstream ss;
+    ss << DumpToJsonCommonFunc(method);
+    ss << ",\n\"virtual\": " << JsonEscape(method->isVirtual());
+    ss << ",\n\"pure\": " << JsonEscape(method->isPure());
+    ss << ",\n\"const\": " << JsonEscape(method->isConst());
+    ss << ",\n\"access\": " << JsonEscape(ToString(method->getAccess()));
+    ss << "}";
+    return ss.str();
+}
+
+static std::string DumpToJson(const CXXRecordDecl* cl) {
+    std::stringstream ss;
+    ss << "\n{";
+    ss << " \n\"qualified_name\": " << JsonEscape(cl->getQualifiedNameAsString());
+    ss << ",\n\"name\": " << JsonEscape(cl->getNameAsString());
+
+    ss << ",\n\"methods\": [";
+    bool step = false;
+    for (const auto& method : cl->methods()) {
+        if (step) ss << ",";
+        ss << DumpToJson(method);
+        step = true;
+    }
+    ss << "]";
+
     ss << "}";
     return ss.str();
 }
@@ -95,7 +131,7 @@ public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         Result.Context->ExternalSource;
         auto Item = Result.Nodes.getDeclAs<FunctionDecl>("functionMatch");
-        if (Item) {
+        if (Item && !Item->isCXXInstanceMember()) {
             auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
             if (input_files.find(entry) != input_files.end()) {
                 opfunctions.push_back(DumpToJson(Item));
