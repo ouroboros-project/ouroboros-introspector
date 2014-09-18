@@ -10,6 +10,7 @@
 // Declares llvm::cl::extrahelp.
 #include "llvm/Support/CommandLine.h"
 
+#include <set>
 #include <unordered_map>
 #include <iostream>
 #include <sstream>
@@ -74,12 +75,17 @@ std::vector<std::string> opnamespaces;
 std::vector<std::string> opclasses;
 std::vector<std::string> opfunctions;
 
+std::set<const FileEntry*> input_files;
+
 class RecordPrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<CXXRecordDecl>("recordMatch");
         if (Item) {
-            opclasses.push_back(DumpToJson(Item));
+            auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
+            if (input_files.find(entry) != input_files.end()) {
+                opclasses.push_back(DumpToJson(Item));
+            }
         }
     }
 };
@@ -90,7 +96,10 @@ public:
         Result.Context->ExternalSource;
         auto Item = Result.Nodes.getDeclAs<FunctionDecl>("functionMatch");
         if (Item) {
-            opfunctions.push_back(DumpToJson(Item));
+            auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
+            if (input_files.find(entry) != input_files.end()) {
+                opfunctions.push_back(DumpToJson(Item));
+            }
         }
     }
 };
@@ -100,15 +109,22 @@ public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<NamespaceDecl>("namespaceMatch");
         if (Item && Item->isCanonicalDecl() && !Item->isAnonymousNamespace()) {
-            opnamespaces.push_back(Item->getQualifiedNameAsString());
+            auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
+            if (input_files.find(entry) != input_files.end()) {
+                opnamespaces.push_back(Item->getQualifiedNameAsString());
+            }
         }
     }
 };
 
 int main(int argc, const char **argv) {
   CommonOptionsParser OptionsParser(argc, argv, MyToolCategory);
-  ClangTool Tool(OptionsParser.getCompilations(),
-                 OptionsParser.getSourcePathList());
+  auto source_list = OptionsParser.getSourcePathList();
+  ClangTool Tool(OptionsParser.getCompilations(), source_list);
+  auto& fm = Tool.getFiles();
+  for (const auto& f : source_list) {
+      input_files.insert(fm.getFile(f));
+  }
 
   RecordPrinter RePrinter;
   FunctionPrinter FunPrinter;
