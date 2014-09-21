@@ -1,16 +1,16 @@
-import argparse, os, json, subprocess, unittest
+import os, json, subprocess, unittest
 
-parser = argparse.ArgumentParser()
-parser.add_argument("introspector")
-parser.add_argument("input")
-parser.add_argument("output")
-args = parser.parse_args()
+config = {
+    'introspector': "${INTROSPECTOR_PATH}",
+    'input': "${INPUT_PATH}",
+    'output': "${OUTPUT_PATH}"
+}
 
 class IntrospectorTestCase():
     def setUp(self):
         global args
         self.actual_output = json.loads(subprocess.check_output([
-            args.introspector,
+            config[introspector],
             self.input_file,
             "--"
         ]))
@@ -63,10 +63,10 @@ class IntrospectorTestCase():
 
 input_suite = unittest.TestSuite()
 
-for (dir, _, files) in os.walk(args.input):
+for (dir, _, files) in os.walk(config["input"]):
     for file in files:
         input_file = os.path.join(dir, file)
-        output_file = os.path.join(dir.replace(args.input, args.output, 1), file + ".json")
+        output_file = os.path.join(dir.replace(config["input"], config["output"], 1), file + ".json")
         
         newclass = type(input_file, (IntrospectorTestCase, unittest.TestCase), {})
         newclass.input_file = input_file

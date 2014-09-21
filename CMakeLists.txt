@@ -9,3 +9,12 @@ target_link_libraries(clang-introspector
   clangBasic
   clangASTMatchers
   )
+  
+add_custom_command(TARGET clang-introspector
+                   POST_BUILD
+                   COMMAND ${CMAKE_COMMAND} 
+                   -DINTROSPECTOR_PATH=$<TARGET_FILE:clang-introspector>
+                   -DINPUT_PATH=${CMAKE_CURRENT_SOURCE_DIR}/test-inputs
+                   -DOUTPUT_PATH=${CMAKE_CURRENT_SOURCE_DIR}/test-outputs
+                   -P ${CMAKE_CURRENT_SOURCE_DIR}/PrepareRunTest.cmake
+                   )
