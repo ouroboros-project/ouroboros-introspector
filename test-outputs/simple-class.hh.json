@@ -1,0 +1,35 @@
+{
+    "namespaces": [],
+    "functions": [],
+    "classes": [
+        {
+            "name": "Foo",
+            "qualified_name": "Foo",
+            "base_class": [],
+            "methods": [
+                {
+                   "access": "public",
+                   "const": false,
+                   "deleted": false,
+                   "name": "Foo",
+                   "params": [],
+                   "pure": false,
+                   "qualified_name": "Foo::Foo",
+                   "return": "void",
+                   "virtual": false
+                },
+                {
+                   "access": "public",
+                   "const": false,
+                   "deleted": false,
+                   "name": "Baka",
+                   "params": [ "int" ],
+                   "pure": false,
+                   "qualified_name": "Foo::Baka",
+                   "return": "void",
+                   "virtual": false
+                }
+            ]
+        }
+    ]
+}
