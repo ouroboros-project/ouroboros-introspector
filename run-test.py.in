@@ -10,7 +10,7 @@ class IntrospectorTestCase():
     def setUp(self):
         global args
         self.actual_output = json.loads(subprocess.check_output([
-            config[introspector],
+            config['introspector'],
             self.input_file,
             "--"
         ]))
@@ -77,4 +77,5 @@ for (dir, _, files) in os.walk(config["input"]):
 
 if __name__ == '__main__':
     unittest.main(argv=["asdf"])
-    
+
+
