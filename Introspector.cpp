@@ -52,11 +52,16 @@ std::string ToString(AccessSpecifier access) {
 }
 
 //
+static void DumpToJsonCommon(std::ostream& ss, const NamedDecl* decl) {
+    ss << " \n\"qualified_name\": " << JsonEscape(decl->getQualifiedNameAsString());
+    ss << ",\n\"name\": " << JsonEscape(decl->getNameAsString());
+    ss << ",\n\"access\": " << JsonEscape(ToString(decl->getAccess()));
+}
+
 static std::string DumpToJsonCommonFunc(const FunctionDecl* func) {
     std::stringstream ss;
     ss << "\n{";
-    ss << " \n\"qualified_name\": " << JsonEscape(func->getQualifiedNameAsString());
-    ss << ",\n\"name\": " << JsonEscape(func->getNameAsString());
+    DumpToJsonCommon(ss, func);
     
     //
     ss << ",\n\"params\": [";
@@ -83,7 +88,6 @@ static std::string DumpToJson(const CXXMethodDecl* method) {
     ss << ",\n\"virtual\": " << JsonEscape(method->isVirtual());
     ss << ",\n\"pure\": " << JsonEscape(method->isPure());
     ss << ",\n\"const\": " << JsonEscape(method->isConst());
-    ss << ",\n\"access\": " << JsonEscape(ToString(method->getAccess()));
     ss << "}";
     return ss.str();
 }
@@ -91,8 +95,7 @@ static std::string DumpToJson(const CXXMethodDecl* method) {
 static std::string DumpToJson(const CXXRecordDecl* cl) {
     std::stringstream ss;
     ss << "\n{";
-    ss << " \n\"qualified_name\": " << JsonEscape(cl->getQualifiedNameAsString());
-    ss << ",\n\"name\": " << JsonEscape(cl->getNameAsString());
+    DumpToJsonCommon(ss, cl);
 
     ss << ",\n\"methods\": [";
     {
