@@ -77,7 +77,8 @@ static std::string DumpToJsonCommonFunc(const FunctionDecl* func) {
     ss << "]";
     //
 
-    ss << ",\n\"return\": " << JsonEscape(func->getReturnType().getAsString());
+    if (!isa<CXXConstructorDecl>(func) && !isa<CXXDestructorDecl>(func))
+        ss << ",\n\"return\": " << JsonEscape(func->getReturnType().getAsString());
     ss << ",\n\"deleted\": " << JsonEscape(func->isDeleted());
     return ss.str();
 }
