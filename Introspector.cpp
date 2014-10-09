@@ -106,6 +106,7 @@ static std::string DumpToJson(const CXXRecordDecl* cl) {
     {
         bool step = false;
         for (const auto& method : cl->methods()) {
+            if (method->isImplicit()) continue;
             if (step) ss << ",";
             ss << DumpToJson(method);
             step = true;
