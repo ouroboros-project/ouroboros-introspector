@@ -56,9 +56,6 @@ static void DumpToJsonCommon(std::ostream& ss, const NamedDecl* decl) {
     ss << " \n\"qualified_name\": " << JsonEscape(decl->getQualifiedNameAsString());
     ss << ",\n\"name\": " << JsonEscape(decl->getNameAsString());
     ss << ",\n\"access\": " << JsonEscape(ToString(decl->getAccess()));
-    if (auto val = dyn_cast<ValueDecl>(decl)) {
-        ss << ",\n\"type\": " << JsonEscape(val->getType().getAsString());
-    }
 }
 
 static std::string DumpToJsonCommonFunc(const FunctionDecl* func) {
@@ -134,6 +131,7 @@ static std::string DumpToJson(const VarDecl* var) {
     std::stringstream ss;
     ss << "\n{";
     DumpToJsonCommon(ss, var);
+    ss << ",\n\"type\": " << JsonEscape(var->getType().getAsString());
     ss << ",\n\"static\": " << JsonEscape(var->isStaticDataMember());
     ss << "}";
     return ss.str();
