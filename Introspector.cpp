@@ -47,7 +47,7 @@ std::string ToString(AccessSpecifier access) {
         case AccessSpecifier::AS_private: return "private";
         case AccessSpecifier::AS_protected: return "protected";
         case AccessSpecifier::AS_public: return "public";
-        default: return "";
+        default: return "public";
     }
 }
 
