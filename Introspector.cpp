@@ -137,6 +137,16 @@ static std::string DumpToJson(const VarDecl* var) {
     return ss.str();
 }
 
+static std::string DumpToJson(const FieldDecl* var) {
+    std::stringstream ss;
+    ss << "\n{";
+    DumpToJsonCommon(ss, var);
+    ss << ",\n\"type\": " << JsonEscape(var->getType().getAsString());
+    ss << ",\n\"static\": " << JsonEscape("false");
+    ss << "}";
+    return ss.str();
+}
+
 std::vector<std::string> opnamespaces;
 std::vector<std::string> opclasses;
 std::vector<std::string> opfunctions;
@@ -200,6 +210,19 @@ public:
     }
 };
 
+class FieldPrinter : public MatchFinder::MatchCallback {
+public:
+    virtual void run(const MatchFinder::MatchResult &Result) {
+        auto Item = Result.Nodes.getDeclAs<FieldDecl>("fieldMatch");
+        if (Item) {
+            auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
+            if (input_files.find(entry) != input_files.end()) {
+                opvariables.push_back(DumpToJson(Item));
+            }
+        }
+    }
+};
+
 int main(int argc, const char **argv) {
   CommonOptionsParser OptionsParser(argc, argv, MyToolCategory);
   auto source_list = OptionsParser.getSourcePathList();
@@ -213,12 +236,14 @@ int main(int argc, const char **argv) {
   FunctionPrinter FunPrinter;
   NamespacePrinter NsPrinter;
   VariablePrinter VarPrinter;
+  FieldPrinter FieldPrinter;
 
   MatchFinder Finder;
   Finder.addMatcher(recordDecl(isDefinition()).bind("recordMatch"), &RePrinter);
   Finder.addMatcher(functionDecl().bind("functionMatch"), &FunPrinter);
   Finder.addMatcher(namespaceDecl().bind("namespaceMatch"), &NsPrinter);
   Finder.addMatcher(varDecl().bind("variableMatch"), &VarPrinter);
+  Finder.addMatcher(fieldDecl().bind("fieldMatch"), &FieldPrinter);
 
   int result = Tool.run(newFrontendActionFactory(&Finder).get());
   if (result == 0) {
