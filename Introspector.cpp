@@ -127,6 +127,27 @@ static std::string DumpToJson(const CXXRecordDecl* cl) {
     return ss.str();
 }
 
+static std::string DumpToJson(const EnumDecl* en) {
+    std::stringstream ss;
+    ss << "\n{";
+    DumpToJsonCommon(ss, en);
+    ss << ",\n\"scoped\": " << JsonEscape(en->isScoped());
+
+    ss << ",\n\"values\": [";
+    {
+        bool step = false;
+        for (const auto& enumeration : en->enumerators()) {
+            if (step) ss << ",";
+            ss << JsonEscape(enumeration->getNameAsString());
+            step = true;
+        }
+    }
+    ss << "]";
+
+    ss << "}";
+    return ss.str();
+}
+
 static std::string DumpToJson(const VarDecl* var) {
     std::stringstream ss;
     ss << "\n{";
@@ -149,6 +170,7 @@ static std::string DumpToJson(const FieldDecl* var) {
 
 std::vector<std::string> opnamespaces;
 std::vector<std::string> opclasses;
+std::vector<std::string> openums;
 std::vector<std::string> opfunctions;
 std::vector<std::string> opvariables;
 
@@ -162,6 +184,19 @@ public:
             auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
             if (input_files.find(entry) != input_files.end()) {
                 opclasses.push_back(DumpToJson(Item));
+            }
+        }
+    }
+};
+
+class EnumPrinter : public MatchFinder::MatchCallback {
+public:
+    virtual void run(const MatchFinder::MatchResult &Result) {
+        auto Item = Result.Nodes.getDeclAs<EnumDecl>("enumMatch");
+        if (Item) {
+            auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
+            if (input_files.find(entry) != input_files.end()) {
+                openums.push_back(DumpToJson(Item));
             }
         }
     }
@@ -233,6 +268,7 @@ int main(int argc, const char **argv) {
   }
 
   RecordPrinter RePrinter;
+  EnumPrinter EnPrinter;
   FunctionPrinter FunPrinter;
   NamespacePrinter NsPrinter;
   VariablePrinter VarPrinter;
@@ -240,6 +276,7 @@ int main(int argc, const char **argv) {
 
   MatchFinder Finder;
   Finder.addMatcher(recordDecl(isDefinition()).bind("recordMatch"), &RePrinter);
+  Finder.addMatcher(enumDecl().bind("enumMatch"), &EnPrinter);
   Finder.addMatcher(functionDecl().bind("functionMatch"), &FunPrinter);
   Finder.addMatcher(namespaceDecl().bind("namespaceMatch"), &NsPrinter);
   Finder.addMatcher(varDecl().bind("variableMatch"), &VarPrinter);
@@ -260,6 +297,14 @@ int main(int argc, const char **argv) {
               std::cout << ",";
           std::cout << opclasses[i];
       }
+
+      std::cout << "\n],\n\"enums\": [";
+      for (size_t i = 0; i < openums.size(); ++i) {
+          if (i > 0)
+              std::cout << ",";
+          std::cout << openums[i];
+      }
+
       std::cout << "\n],\n\"functions\": [";
       for (size_t i = 0; i < opfunctions.size(); ++i) {
           if (i > 0)
