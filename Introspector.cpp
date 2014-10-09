@@ -130,9 +130,19 @@ static std::string DumpToJson(const CXXRecordDecl* cl) {
     return ss.str();
 }
 
+static std::string DumpToJson(const VarDecl* var) {
+    std::stringstream ss;
+    ss << "\n{";
+    DumpToJsonCommon(ss, var);
+    ss << ",\n\"static\": " << JsonEscape(var->isStaticDataMember());
+    ss << "}";
+    return ss.str();
+}
+
 std::vector<std::string> opnamespaces;
 std::vector<std::string> opclasses;
 std::vector<std::string> opfunctions;
+std::vector<std::string> opvariables;
 
 std::set<const FileEntry*> input_files;
 
@@ -178,6 +188,19 @@ public:
     }
 };
 
+class VariablePrinter : public MatchFinder::MatchCallback {
+public:
+    virtual void run(const MatchFinder::MatchResult &Result) {
+        auto Item = Result.Nodes.getDeclAs<VarDecl>("variableMatch");
+        if (Item) {
+            auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
+            if (input_files.find(entry) != input_files.end()) {
+                opvariables.push_back(DumpToJson(Item));
+            }
+        }
+    }
+};
+
 int main(int argc, const char **argv) {
   CommonOptionsParser OptionsParser(argc, argv, MyToolCategory);
   auto source_list = OptionsParser.getSourcePathList();
@@ -190,10 +213,13 @@ int main(int argc, const char **argv) {
   RecordPrinter RePrinter;
   FunctionPrinter FunPrinter;
   NamespacePrinter NsPrinter;
+  VariablePrinter VarPrinter;
+
   MatchFinder Finder;
   Finder.addMatcher(recordDecl(isDefinition()).bind("recordMatch"), &RePrinter);
   Finder.addMatcher(functionDecl().bind("functionMatch"), &FunPrinter);
   Finder.addMatcher(namespaceDecl().bind("namespaceMatch"), &NsPrinter);
+  Finder.addMatcher(varDecl().bind("variableMatch"), &VarPrinter);
 
   int result = Tool.run(newFrontendActionFactory(&Finder).get());
   if (result == 0) {
@@ -215,6 +241,12 @@ int main(int argc, const char **argv) {
           if (i > 0)
               std::cout << ",";
           std::cout << opfunctions[i];
+      }
+      std::cout << "\n],\n\"variables\": [";
+      for (size_t i = 0; i < opvariables.size(); ++i) {
+          if (i > 0)
+              std::cout << ",";
+          std::cout << opvariables[i];
       }
       std::cout << "\n]\n}\n";
   }
