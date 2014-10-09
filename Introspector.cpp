@@ -92,6 +92,7 @@ static std::string DumpToJson(const CXXMethodDecl* method) {
     ss << ",\n\"virtual\": " << JsonEscape(method->isVirtual());
     ss << ",\n\"pure\": " << JsonEscape(method->isPure());
     ss << ",\n\"const\": " << JsonEscape(method->isConst());
+    ss << ",\n\"static\": " << JsonEscape(method->isStatic());
     ss << "}";
     return ss.str();
 }
