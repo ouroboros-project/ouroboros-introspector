@@ -291,7 +291,14 @@ int main(int argc, const char **argv) {
 
   int result = Tool.run(newFrontendActionFactory(&Finder).get());
   if (result == 0) {
-      std::cout << "{\n\"namespaces\": [";
+      std::cout << "{\n\"headers\": [";
+      for (size_t i = 0; i < source_list.size(); ++i) {
+          if (i > 0)
+              std::cout << ",";
+          std::cout << JsonEscape(source_list[i]);
+      }
+
+      std::cout << "\n],\n\"namespaces\": [";
       for (size_t i = 0; i < opnamespaces.size(); ++i) {
           if (i > 0)
               std::cout << ",";
