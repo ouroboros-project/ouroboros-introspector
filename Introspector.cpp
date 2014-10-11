@@ -51,6 +51,13 @@ std::string ToString(AccessSpecifier access) {
     }
 }
 
+std::string ToString(QualType type) {
+    std::string str = type.getAsString();
+    if (str == "_Bool")
+        return "bool";
+    return str;
+}
+
 //
 static void DumpToJsonCommon(std::ostream& ss, const NamedDecl* decl) {
     ss << " \n\"qualified_name\": " << JsonEscape(decl->getQualifiedNameAsString());
@@ -68,14 +75,14 @@ static std::string DumpToJsonCommonFunc(const FunctionDecl* func) {
     bool step = false;
     for (const auto& param : func->params()) {
         if (step) ss << ",";
-        ss << JsonEscape(param->getType().getAsString());
+        ss << JsonEscape(ToString(param->getType()));
         step = true;
     }
     ss << "]";
     //
 
     if (!isa<CXXConstructorDecl>(func) && !isa<CXXDestructorDecl>(func))
-        ss << ",\n\"return\": " << JsonEscape(func->getReturnType().getAsString());
+        ss << ",\n\"return\": " << JsonEscape(ToString(func->getReturnType()));
     ss << ",\n\"deleted\": " << JsonEscape(func->isDeleted());
     return ss.str();
 }
@@ -152,7 +159,7 @@ static std::string DumpToJson(const VarDecl* var) {
     std::stringstream ss;
     ss << "\n{";
     DumpToJsonCommon(ss, var);
-    ss << ",\n\"type\": " << JsonEscape(var->getType().getAsString());
+    ss << ",\n\"type\": " << JsonEscape(ToString(var->getType()));
     ss << ",\n\"static\": " << JsonEscape(var->isStaticDataMember());
     ss << "}";
     return ss.str();
@@ -162,7 +169,7 @@ static std::string DumpToJson(const FieldDecl* var) {
     std::stringstream ss;
     ss << "\n{";
     DumpToJsonCommon(ss, var);
-    ss << ",\n\"type\": " << JsonEscape(var->getType().getAsString());
+    ss << ",\n\"type\": " << JsonEscape(ToString(var->getType()));
     ss << ",\n\"static\": " << JsonEscape("false");
     ss << "}";
     return ss.str();
