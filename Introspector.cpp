@@ -190,7 +190,10 @@ public:
         if (Item) {
             auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
             if (input_files.find(entry) != input_files.end()) {
-                opclasses.push_back(DumpToJson(Item));
+                auto x = Item->getDescribedClassTemplate();
+                auto name = Item->getNameAsString();
+                if (!x && !isa<ClassTemplateSpecializationDecl>(Item))
+                    opclasses.push_back(DumpToJson(Item));
             }
         }
     }
@@ -200,7 +203,7 @@ class EnumPrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<EnumDecl>("enumMatch");
-        if (Item) {
+        if (Item && !Item->isTemplateDecl()) {
             auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
             if (input_files.find(entry) != input_files.end()) {
                 openums.push_back(DumpToJson(Item));
@@ -214,7 +217,7 @@ public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         Result.Context->ExternalSource;
         auto Item = Result.Nodes.getDeclAs<FunctionDecl>("functionMatch");
-        if (Item && !Item->isCXXInstanceMember()) {
+        if (Item && !Item->isCXXInstanceMember() && !Item->isTemplateDecl()) {
             auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
             if (input_files.find(entry) != input_files.end()) {
                 opfunctions.push_back(DumpToJson(Item));
@@ -242,7 +245,7 @@ class VariablePrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<VarDecl>("variableMatch");
-        if (Item) {
+        if (Item && !Item->isTemplateDecl()) {
             auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
             if (input_files.find(entry) != input_files.end()) {
                 if (!isa<ParmVarDecl>(Item))
@@ -256,7 +259,7 @@ class FieldPrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<FieldDecl>("fieldMatch");
-        if (Item) {
+        if (Item && !Item->isTemplateDecl()) {
             auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
             if (input_files.find(entry) != input_files.end()) {
                 opvariables.push_back(DumpToJson(Item));
