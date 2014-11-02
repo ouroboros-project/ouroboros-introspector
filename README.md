@@ -2,11 +2,11 @@ HOW TO BUILD
 ============
  
 Assuming that $LLVM_DIR points to a directory with LLVM+Clang as described in http://clang.llvm.org/get_started.html,
-and that $OPWIG_DIR points to the directory you cloned this repository, do:
+and that $OPI_DIR points to the directory you cloned this repository, do:
  
  ```
- $ mkdir opwig-build && cd opwig-build
- $ cmake "$LLVM_DIR" -DLLVM_EXTERNAL_CLANG_TOOLS_EXTRA_SOURCE_DIR="$OPWIG_DIR"
+ $ mkdir opi-build && cd opi-build
+ $ cmake "$LLVM_DIR" -DLLVM_EXTERNAL_CLANG_TOOLS_EXTRA_SOURCE_DIR="$OPI_DIR"
  ```
  
 
@@ -21,6 +21,6 @@ USAGE
 =====
  
 ```
- $ opwig <PATH_TO_HEADER> <PATH_TO_HEADER> .. -- -x c++
+ $ opi <PATH_TO_HEADER> <PATH_TO_HEADER> .. -- -x c++
 ```
  
