@@ -260,6 +260,10 @@ public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<FieldDecl>("fieldMatch");
         if (Item && !Item->isTemplateDecl()) {
+            auto parent = dyn_cast<CXXRecordDecl>(Item->getParent());
+            if (parent && (parent->getDescribedClassTemplate() || isa<ClassTemplateSpecializationDecl>(parent)))
+                return;
+
             auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
             if (input_files.find(entry) != input_files.end()) {
                 opvariables.push_back(DumpToJson(Item));
