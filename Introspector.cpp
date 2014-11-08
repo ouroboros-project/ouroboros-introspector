@@ -170,7 +170,7 @@ static std::string DumpToJson(const FieldDecl* var) {
     ss << "\n{";
     DumpToJsonCommon(ss, var);
     ss << ",\n\"type\": " << JsonEscape(ToString(var->getType()));
-    ss << ",\n\"static\": " << JsonEscape("false");
+    ss << ",\n\"static\": " << JsonEscape(false);
     ss << "}";
     return ss.str();
 }
@@ -245,7 +245,7 @@ class VariablePrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<VarDecl>("variableMatch");
-        if (Item && !Item->isTemplateDecl()) {
+        if (Item && !Item->isFunctionOrMethodVarDecl() && Item->hasGlobalStorage()) {
             auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
             if (input_files.find(entry) != input_files.end()) {
                 if (!isa<ParmVarDecl>(Item))
