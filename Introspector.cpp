@@ -217,7 +217,7 @@ public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         Result.Context->ExternalSource;
         auto Item = Result.Nodes.getDeclAs<FunctionDecl>("functionMatch");
-        if (Item && !Item->isCXXInstanceMember() && !Item->isTemplateDecl()) {
+        if (Item && !isa<CXXMethodDecl>(Item) && !Item->isTemplateDecl()) {
             auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
             if (input_files.find(entry) != input_files.end()) {
                 opfunctions.push_back(DumpToJson(Item));
