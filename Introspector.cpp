@@ -290,7 +290,7 @@ int main(int argc, const char **argv) {
 
   MatchFinder Finder;
   Finder.addMatcher(recordDecl(isDefinition()).bind("recordMatch"), &RePrinter);
-  Finder.addMatcher(enumDecl().bind("enumMatch"), &EnPrinter);
+  Finder.addMatcher(enumDecl(isDefinition()).bind("enumMatch"), &EnPrinter);
   Finder.addMatcher(functionDecl().bind("functionMatch"), &FunPrinter);
   Finder.addMatcher(namespaceDecl().bind("namespaceMatch"), &NsPrinter);
   Finder.addMatcher(varDecl().bind("variableMatch"), &VarPrinter);
