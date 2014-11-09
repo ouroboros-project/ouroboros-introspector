@@ -207,18 +207,22 @@ std::vector<std::string> opvariables;
 
 std::set<const FileEntry*> input_files;
 
+bool IsDeclFromInputFiles(const Decl* decl, SourceManager* sourcemanager) {
+    auto entry = sourcemanager->getFileEntryForID(sourcemanager->getFileID(decl->getLocation()));
+    return (input_files.find(entry) != input_files.end());
+}
+
 class RecordPrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<CXXRecordDecl>("recordMatch");
-        if (Item && !Item->getName().empty() && !IsInsideTemplateContext(Item)) {
-            auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
-            if (input_files.find(entry) != input_files.end()) {
-                auto x = Item->getDescribedClassTemplate();
-                if (!x && !isa<ClassTemplateSpecializationDecl>(Item))
-                    opclasses.push_back(DumpToJson(Item));
-            }
-        }
+        if (!Item) return;
+        if (!IsDeclFromInputFiles(Item, Result.SourceManager)) return;
+        if (!Item->getIdentifier()) return;
+        if (IsInsideTemplateContext(Item)) return;
+
+        if (!IsTemplateContext(Item))
+            opclasses.push_back(DumpToJson(Item));
     }
 };
 
@@ -226,29 +230,26 @@ class EnumPrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<EnumDecl>("enumMatch");
-        if (Item && !Item->isTemplateDecl() && !IsInsideTemplateContext(Item)) {
-            auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
-            if (input_files.find(entry) != input_files.end()) {
-                openums.push_back(DumpToJson(Item));
-            }
-        }
+        if (!Item) return;
+        if (!IsDeclFromInputFiles(Item, Result.SourceManager)) return;
+        if (!Item->getIdentifier()) return;
+        if (IsInsideTemplateContext(Item)) return;
+
+        openums.push_back(DumpToJson(Item));
     }
 };
 
 class FunctionPrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
-        Result.Context->ExternalSource;
         auto Item = Result.Nodes.getDeclAs<FunctionDecl>("functionMatch");
-        if (Item && !isa<CXXMethodDecl>(Item) && !Item->isTemplateDecl()
-            && !IsInsideTemplateContext(Item)
-            && !Item->getName().empty()
-            && !Item->getDescribedFunctionTemplate()) {
+        if (!Item) return;
+        if (!IsDeclFromInputFiles(Item, Result.SourceManager)) return;
+        if (!Item->getIdentifier()) return;
+        if (IsInsideTemplateContext(Item)) return;
 
-            auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
-            if (input_files.find(entry) != input_files.end()) {
-                opfunctions.push_back(DumpToJson(Item));
-            }
+        if (!isa<CXXMethodDecl>(Item) && !Item->getDescribedFunctionTemplate()) {
+            opfunctions.push_back(DumpToJson(Item));
         }
     }
 };
@@ -257,13 +258,13 @@ class NamespacePrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<NamespaceDecl>("namespaceMatch");
-        if (Item && !Item->isAnonymousNamespace()
+        if (!Item) return;
+        if (!IsDeclFromInputFiles(Item, Result.SourceManager)) return;
+
+        if (!Item->isAnonymousNamespace()
             && std::find(opnamespaces.begin(), opnamespaces.end(), Item->getQualifiedNameAsString()) == opnamespaces.end()) {
 
-            auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
-            if (input_files.find(entry) != input_files.end()) {
-                opnamespaces.push_back(Item->getQualifiedNameAsString());
-            }
+            opnamespaces.push_back(Item->getQualifiedNameAsString());
         }
     }
 };
@@ -272,16 +273,13 @@ class VariablePrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<VarDecl>("variableMatch");
-        if (Item && !Item->isFunctionOrMethodVarDecl() && Item->hasGlobalStorage() && !IsInsideTemplateContext(Item)) {
+        if (!Item) return;
+        if (!IsDeclFromInputFiles(Item, Result.SourceManager)) return;
+        if (!Item->getIdentifier()) return;
+        if (IsInsideTemplateContext(Item)) return;
 
-            if (Item->getName().empty())
-                return;
-
-            auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
-            if (input_files.find(entry) != input_files.end()) {
-                if (!isa<ParmVarDecl>(Item))
-                    opvariables.push_back(DumpToJson(Item));
-            }
+        if (!Item->isFunctionOrMethodVarDecl() && Item->hasGlobalStorage() && !isa<ParmVarDecl>(Item)) {
+            opvariables.push_back(DumpToJson(Item));
         }
     }
 };
@@ -290,15 +288,12 @@ class FieldPrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<FieldDecl>("fieldMatch");
-        if (Item && !IsInsideTemplateContext(Item)) {
-            if (Item->getName().empty())
-                return;
+        if (!Item) return;
+        if (!IsDeclFromInputFiles(Item, Result.SourceManager)) return;
+        if (!Item->getIdentifier()) return;
+        if (IsInsideTemplateContext(Item)) return;
 
-            auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
-            if (input_files.find(entry) != input_files.end()) {
-                opvariables.push_back(DumpToJson(Item));
-            }
-        }
+       opvariables.push_back(DumpToJson(Item));
     }
 };
 
