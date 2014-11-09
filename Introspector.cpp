@@ -60,7 +60,17 @@ std::string ToString(QualType type) {
 
 //
 static void DumpToJsonCommon(std::ostream& ss, const NamedDecl* decl) {
-    ss << " \n\"qualified_name\": " << JsonEscape(decl->getQualifiedNameAsString());
+    auto qual_name = decl->getQualifiedNameAsString();
+
+    while (true) {
+        size_t pos = qual_name.find("(anonymous");
+        if (pos == std::string::npos) break;
+        size_t end_pos = qual_name.find(")::", pos);
+        if (end_pos == std::string::npos) break;
+        qual_name.erase(pos, end_pos - pos + 3);
+    }
+
+    ss << " \n\"qualified_name\": " << JsonEscape(qual_name);
     ss << ",\n\"name\": " << JsonEscape(decl->getNameAsString());
     ss << ",\n\"access\": " << JsonEscape(ToString(decl->getAccess()));
 }
@@ -175,6 +185,20 @@ static std::string DumpToJson(const FieldDecl* var) {
     return ss.str();
 }
 
+bool IsTemplateContext(const DeclContext* Ctx) {
+    auto parent = dyn_cast<CXXRecordDecl>(Ctx);
+    return (parent && (parent->getDescribedClassTemplate() || isa<ClassTemplateSpecializationDecl>(parent)));
+}
+
+bool IsInsideTemplateContext(const Decl* decl) {
+    for (const DeclContext *Ctx = decl->getDeclContext();
+         Ctx && isa<NamedDecl>(Ctx);
+         Ctx = Ctx->getParent())
+        if (IsTemplateContext(Ctx))
+            return true;
+    return false;
+}
+
 std::vector<std::string> opnamespaces;
 std::vector<std::string> opclasses;
 std::vector<std::string> openums;
@@ -187,7 +211,7 @@ class RecordPrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<CXXRecordDecl>("recordMatch");
-        if (Item && !Item->getName().empty()) {
+        if (Item && !Item->getName().empty() && !IsInsideTemplateContext(Item)) {
             auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
             if (input_files.find(entry) != input_files.end()) {
                 auto x = Item->getDescribedClassTemplate();
@@ -244,7 +268,11 @@ class VariablePrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<VarDecl>("variableMatch");
-        if (Item && !Item->isFunctionOrMethodVarDecl() && Item->hasGlobalStorage()) {
+        if (Item && !Item->isFunctionOrMethodVarDecl() && Item->hasGlobalStorage() && !IsInsideTemplateContext(Item)) {
+
+            if (Item->getName().empty())
+                return;
+
             auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
             if (input_files.find(entry) != input_files.end()) {
                 if (!isa<ParmVarDecl>(Item))
@@ -258,11 +286,7 @@ class FieldPrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<FieldDecl>("fieldMatch");
-        if (Item && !Item->isTemplateDecl()) {
-            auto parent = dyn_cast<CXXRecordDecl>(Item->getParent());
-            if (parent && (parent->getDescribedClassTemplate() || isa<ClassTemplateSpecializationDecl>(parent)))
-                return;
-
+        if (Item && !IsInsideTemplateContext(Item)) {
             if (Item->getName().empty())
                 return;
 
