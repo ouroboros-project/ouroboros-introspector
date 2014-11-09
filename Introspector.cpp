@@ -187,11 +187,10 @@ class RecordPrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<CXXRecordDecl>("recordMatch");
-        if (Item) {
+        if (Item && !Item->getName().empty()) {
             auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
             if (input_files.find(entry) != input_files.end()) {
                 auto x = Item->getDescribedClassTemplate();
-                auto name = Item->getNameAsString();
                 if (!x && !isa<ClassTemplateSpecializationDecl>(Item))
                     opclasses.push_back(DumpToJson(Item));
             }
@@ -262,6 +261,9 @@ public:
         if (Item && !Item->isTemplateDecl()) {
             auto parent = dyn_cast<CXXRecordDecl>(Item->getParent());
             if (parent && (parent->getDescribedClassTemplate() || isa<ClassTemplateSpecializationDecl>(parent)))
+                return;
+
+            if (Item->getName().empty())
                 return;
 
             auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
