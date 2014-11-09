@@ -226,7 +226,7 @@ class EnumPrinter : public MatchFinder::MatchCallback {
 public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         auto Item = Result.Nodes.getDeclAs<EnumDecl>("enumMatch");
-        if (Item && !Item->isTemplateDecl()) {
+        if (Item && !Item->isTemplateDecl() && !IsInsideTemplateContext(Item)) {
             auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
             if (input_files.find(entry) != input_files.end()) {
                 openums.push_back(DumpToJson(Item));
@@ -240,7 +240,11 @@ public:
     virtual void run(const MatchFinder::MatchResult &Result) {
         Result.Context->ExternalSource;
         auto Item = Result.Nodes.getDeclAs<FunctionDecl>("functionMatch");
-        if (Item && !isa<CXXMethodDecl>(Item) && !Item->isTemplateDecl()) {
+        if (Item && !isa<CXXMethodDecl>(Item) && !Item->isTemplateDecl()
+            && !IsInsideTemplateContext(Item)
+            && !Item->getName().empty()
+            && !Item->getDescribedFunctionTemplate()) {
+
             auto entry = Result.SourceManager->getFileEntryForID(Result.SourceManager->getFileID(Item->getLocation()));
             if (input_files.find(entry) != input_files.end()) {
                 opfunctions.push_back(DumpToJson(Item));
